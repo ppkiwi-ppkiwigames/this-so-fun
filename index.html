@@ -15,7 +15,7 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--text);font:14px/1.4 system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+body{background:var(--bg);color:var(--text);font:14px/1.4 var(--ui-font,system-ui,sans-serif);display:flex;flex-direction:column;overflow:hidden}
 body.grid #stage{background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:32px 32px}
 button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
 button:hover{border-color:var(--accent)}
@@ -84,6 +84,8 @@ body.noanim .panel{transition:none}
 .fav:hover i{border-color:var(--accent)}
 .fav b{position:absolute;top:-4px;right:8px;display:none;font-weight:400;background:var(--panel);border:1px solid var(--line);border-radius:50%;width:18px;height:18px;line-height:16px;font-size:11px}
 .fav:hover b{display:block}
+.dc{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:8px;border-radius:999px;padding:8px 14px}
+.dc img{border-radius:4px}
 .credit{position:absolute;bottom:10px;color:var(--muted);font-size:12px}
 #apps-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
 .app{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px 8px;text-align:center;cursor:pointer}
@@ -174,9 +176,6 @@ body.noanim input.sw,body.noanim input.sw::after{transition:none}
 .lk .t{flex:1;min-width:0}.lk .t b{display:block;font-weight:500;font-size:12px}
 .lk .t code{display:block;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lk button{padding:3px 8px;font-size:12px}
-body.fs #tabs,body.fs #bar,body.fs #status{display:none}
-#fsExit{position:fixed;top:8px;right:8px;z-index:2147483000;display:none;opacity:.3;padding:4px 10px}
-#fsExit:hover{opacity:1}body.fs #fsExit{display:block}
 </style>
 </head>
 <body>
@@ -193,7 +192,6 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
   <button id="appsBtn" title="Apps">🧩</button>
   <button id="gamesBtn" title="Games">🎮</button>
   <button id="linkBtn" title="Link maker">🔗</button>
-  <button id="fsBtn" title="Full screen (F11)">⛶</button>
   <button id="devBtn" title="Developer tools (F12)">🛠</button>
   <button id="settingsBtn" title="Settings">⚙</button>
 </div>
@@ -235,7 +233,7 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
   </div></aside>
 
   <aside class="panel" id="gamesPanel"><div>
-    <div class="row"><h2>Games</h2><button data-close>✕</button></div>
+    <div class="row"><h2>Games</h2><span><select id="gsite" title="Game site"><option value="lumin">Lumin SDK</option><option value="ugs">UGS</option></select> <button data-close>✕</button></span></div>
     <div id="gstate" class="hint"></div>
     <button id="gretry" style="display:none">Try again</button>
     <iframe id="gframe" allow="fullscreen; gamepad; autoplay" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock allow-modals allow-downloads"></iframe>
@@ -285,6 +283,8 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
         <div class="row"><label>Safe search<div class="hint">Adds safe search to Google searches</div></label><input id="s-safe" type="checkbox" class="sw"></div>
         <div class="col"><label>On startup, open<div class="hint">Empty means the start page</div></label><input id="s-home" placeholder="https://example.com"></div>
         <div class="row"><label>Open links in a new tab<div class="hint">Links inside pages open next to the current tab</div></label><input id="s-newTabLinks" type="checkbox" class="sw"></div>
+        <div class="row"><label>AI<div class="hint">Which AI opens in the AI panel</div></label>
+          <select id="s-aiProvider"><option value="default">Default AI</option><option value="duck">Duck.ai</option></select></div>
         <div class="row"><label>Ask before closing this window</label><input id="s-confirmClose" type="checkbox" class="sw"></div>
       </div>
       <div class="grp"><h3>Favorites</h3>
@@ -307,9 +307,26 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
             <option value="matrix">Matrix rain</option>
             <option value="stars">Starfield</option>
             <option value="aurora">Aurora</option>
+            <option value="image">Custom image</option>
+            <option value="color">Solid color</option>
+            <option value="gradient">Gradient</option>
           </select></div>
         <div class="row"><label>Grid on the static background</label><input id="s-grid" type="checkbox" class="sw"></div>
         <div class="row"><label>Animations<div class="hint">Off also freezes animated backgrounds</div></label><input id="s-anim" type="checkbox" class="sw"></div>
+        <div class="col" id="s-bgImgBox"><input id="s-bgImg" placeholder="Image address (https://…)">
+          <div class="row"><span class="hint" id="s-bgState">Or upload an image (up to 2 MB)</span><input id="s-bgFile" type="file" accept="image/*"></div>
+          <div class="row"><label>Image fit</label><select id="s-bgFit"><option value="cover">Fill</option><option value="contain">Fit</option><option value="tile">Tile</option></select></div></div>
+        <div class="row" id="s-bgColorRow"><label>Colors<div class="hint">Solid color, or the two gradient colors</div></label><span><input id="s-bgColor" type="color"> <input id="s-bgColor2" type="color"></span></div>
+      </div>
+      <div class="grp"><h3>Font</h3>
+        <div class="row"><label>Interface font<div class="hint">Applies to funny.py itself, not the pages you open</div></label><select id="s-font"></select></div>
+        <div class="col" id="s-fontBox"><input id="s-fontCustom" placeholder="Font name, e.g. Poppins (Google Fonts) or one you have installed">
+          <div class="row"><span class="hint" id="s-fontState">Or upload a font file (.woff2, .ttf, .otf, up to 2 MB)</span><input id="s-fontFile" type="file" accept=".woff,.woff2,.ttf,.otf"></div></div>
+      </div>
+      <div class="grp"><h3>Cursor</h3>
+        <div class="row"><label>Cursor<div class="hint">Doesn't change over pages you open, the page controls it there</div></label><select id="s-cursor"></select></div>
+        <div class="col" id="s-cursorBox"><input id="s-cursorImg" placeholder="Image address (https://…, small image)">
+          <div class="row"><span class="hint" id="s-cursorState">Or upload an image (it is shrunk to 32 px)</span><input id="s-cursorFile" type="file" accept="image/*"></div></div>
       </div>
       <div class="grp"><h3>Pages</h3>
         <div class="row"><label>Page zoom<div class="hint">Applies to pages you open next</div></label>
@@ -363,7 +380,8 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
       <div class="grp"><h3>Wisp server</h3>
         <div class="col"><label>Server<div class="hint">The relay all your traffic tunnels through</div></label>
           <select id="s-wispPreset">
-            <option value="wss://wisp.mercurywork.shop/">wisp.mercurywork.shop (default)</option>
+            <option value="wss://wisp.freewisp.org/">wisp.freewisp.org (default)</option>
+            <option value="wss://wisp.mercurywork.shop/">wisp.mercurywork.shop</option>
             <option value="wss://anura.pro/">anura.pro</option>
             <option value="wss://truffled.lol/">truffled.lol</option>
             <option value="wss://pgis-wisp.onrender.com/">pgis-wisp.onrender.com</option>
@@ -378,6 +396,9 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
       <div class="grp"><h3>Loading</h3>
         <div class="row"><label>Use CDN mirrors<div class="hint">If a jsDelivr link fails, try its other mirrors</div></label><input id="s-mirrors" type="checkbox" class="sw"></div>
         <div class="row"><label>Cache files<div class="hint">Reuse scripts, styles and images so repeat visits load faster</div></label><span><input id="s-cache" type="checkbox" class="sw"> <button id="s-clearcache">Clear</button></span></div>
+        <div class="row"><label>Browser identity<div class="hint">What sites think you are. If a site says "not available" (TikTok, for example), try Android or iPhone</div></label><select id="s-uaPreset"><option value="auto">Automatic (this browser)</option><option value="chromeWin">Chrome on Windows</option><option value="android">Chrome on Android</option><option value="iphone">Safari on iPhone</option><option value="firefox">Firefox on Windows</option></select></div>
+        <div class="row"><label>Keep cookies<div class="hint">Lets logins and "are you a robot" checks stick between pages</div></label><span><input id="s-cookies" type="checkbox" class="sw"> <button id="s-clearcookies">Clear</button></span></div>
+        <div class="row"><label>Full browser headers<div class="hint">Turn off if a site breaks, it sends the older, simpler request instead</div></label><input id="s-strictHdr" type="checkbox" class="sw"></div>
         <div class="row"><label>Give up after (seconds)</label><input id="s-timeout" type="number" min="5" max="120" style="width:90px"></div>
         <div class="row"><label>Max connections</label><input id="s-conns" type="number" min="1" max="200" style="width:90px"></div>
       </div>
@@ -405,7 +426,6 @@ body.fs #tabs,body.fs #bar,body.fs #status{display:none}
     </section>
   </div></aside>
 </div>
-<button id="fsExit" title="Exit full screen">Exit full screen</button>
 <div id="cloak" title=""></div>
 
 <script>
@@ -431,13 +451,35 @@ function bridgeRuntime(o){
     return '';
   }
   function imgBlob(r){ var ct = ''; try { ct = new Headers(r.headers).get('content-type') || ''; } catch(x){} if (!/^image\//i.test(ct)) ct = sniff(r.buf) || ct; return new Blob([r.buf], { type:ct }); }
-  function up(m, cb){ var id = ++n; pend[id] = cb; m.id = id; parent.postMessage(m, '*'); }
+  var CK = o.ck || '';
+  if (o.ua){ try {
+    Object.defineProperty(navigator, 'userAgent', { configurable:true, get:function(){ return o.ua; } });
+    Object.defineProperty(navigator, 'appVersion', { configurable:true, get:function(){ return o.ua.replace(/^Mozilla\//, ''); } });
+    var pl = /iPhone/.test(o.ua) ? 'iPhone' : /Android/.test(o.ua) ? 'Linux armv81' : 'Win32';
+    Object.defineProperty(navigator, 'platform', { configurable:true, get:function(){ return pl; } });
+    if (/Firefox|iPhone/.test(o.ua)) Object.defineProperty(navigator, 'userAgentData', { configurable:true, get:function(){ return undefined; } });
+  } catch(x){} }
+  try {
+    Object.defineProperty(document, 'cookie', { configurable:true,
+      get:function(){ return CK; },
+      set:function(v){
+        var sv = String(v), nv = sv.split(';')[0], i = nv.indexOf('=');
+        if (i > 0){
+          var nm = nv.slice(0, i).trim(), parts = CK ? CK.split('; ') : [];
+          parts = parts.filter(function(p){ return p.split('=')[0] !== nm; });
+          if (!/max-age=0|max-age=-|expires=[^;]*(19\d\d|1970)/i.test(sv)) parts.push(nv.trim());
+          CK = parts.join('; ');
+        }
+        try { parent.postMessage({ funnyCookie:1, url:document.baseURI, line:sv }, '*'); } catch(x){}
+      } });
+  } catch(x){}
+  function up(m, cb){ var id = ++n; pend[id] = cb; m.id = id; if (!m.base) m.base = document.baseURI; parent.postMessage(m, '*'); }
   function ask(m){ return new Promise(function(ok){ up(m, ok); }); }
   function post(m){ try { parent.postMessage(m, '*'); } catch(x){} }
   function blobOf(r, t){ var ct = t || ''; try { ct = new Headers(r.headers).get('content-type') || ct; } catch(x){} return new Blob([r.buf], { type:ct }); }
   addEventListener('message', function(e){
     var d = e.data; if (!d || typeof d !== 'object') return;
-    if (d.funnyRes){ var f = pend[d.id]; if (f){ delete pend[d.id]; f(d); } return; }
+    if (d.funnyRes){ if (typeof d.ck === 'string') CK = d.ck; var f = pend[d.id]; if (f){ delete pend[d.id]; f(d); } return; }
     if (e.source === parent){
       if (d.funnyEval){
         var r, bad = false;
@@ -521,6 +563,26 @@ function bridgeRuntime(o){
   window.XMLHttpRequest = XHR;
 
   /* files the page adds later (images, video, audio, frames, scripts, stylesheets) are fetched through Wisp too */
+  /* images load only when they are near the screen (like Vertx: about 1.5 screens ahead), with a browser-style Accept header */
+  var IMGACC = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8', nearW = new Map();
+  var nearObs = typeof IntersectionObserver === 'function' ? new IntersectionObserver(function(es){
+    es.forEach(function(en){ if (!en.isIntersecting) return; nearObs.unobserve(en.target); var f = nearW.get(en.target); nearW.delete(en.target); if (f) f(); });
+  }, { rootMargin:'150% 150% 150% 150%' }) : null;
+  function near(el){
+    if (!nearObs || !el.isConnected || el.getAttribute('loading') === 'eager') return Promise.resolve();
+    return new Promise(function(res){ nearW.set(el, res); nearObs.observe(el); });
+  }
+  function getMedia(el, tag, u){
+    var h = { Referer:document.baseURI }; if (tag === 'IMG') h.Accept = IMGACC;
+    ask({ funnyFetch:1, url:u, method:'GET', headers:h }).then(function(r){
+      if (r.status === 401 || r.status === 403) return ask({ funnyFetch:1, url:u, method:'GET', headers:tag === 'IMG' ? { Accept:IMGACC } : {} });
+      return r;
+    }).then(function(r){
+      if (!r || r.err || r.status >= 400 || !r.buf || !r.buf.byteLength){ if (tag === 'IMG') el.src = PIX; return; }
+      el.src = URL.createObjectURL(tag === 'IMG' ? imgBlob(r) : blobOf(r));
+      var p = el.parentNode; if (tag === 'SOURCE' && p && p.load) p.load();
+    });
+  }
   function cssFix(css, base){
     var urls = [], m, re = /url\(\s*(['"]?)([^'")]+?)\1\s*\)/gi;
     while ((m = re.exec(css)) && urls.length < 40){ var v = m[2].trim(); if (!/^(data|blob|about|#)/i.test(v) && urls.indexOf(v) < 0) urls.push(v); }
@@ -557,21 +619,15 @@ function bridgeRuntime(o){
       });
       return;
     }
+    if (tag === 'IMG' && el.getAttribute('data-fp-img')){ var iu = el.getAttribute('data-fp-img'); el.removeAttribute('data-fp-img'); near(el).then(function(){ getMedia(el, tag, iu); }); return; }
     if (!el.getAttribute('src') || !/^https?:/i.test(el.src)) return;
     u = el.src;
     el.removeAttribute('src');
     if (tag === 'IFRAME'){
-      el.setAttribute('sandbox', 'allow-scripts allow-forms allow-pointer-lock allow-modals allow-downloads');
+      el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals allow-downloads');
       ask({ funnyFrame:1, url:u }).then(function(r){ if (r.html != null) el.srcdoc = r.html; });
     } else {
-      ask({ funnyFetch:1, url:u, method:'GET', headers:{ Referer:document.baseURI } }).then(function(r){
-        if (r.status === 401 || r.status === 403) return ask({ funnyFetch:1, url:u, method:'GET' });
-        return r;
-      }).then(function(r){
-        if (!r || r.err || r.status >= 400 || !r.buf || !r.buf.byteLength){ if (tag === 'IMG') el.src = PIX; return; }
-        el.src = URL.createObjectURL(tag === 'IMG' ? imgBlob(r) : blobOf(r));
-        var p = el.parentNode; if (tag === 'SOURCE' && p && p.load) p.load();
-      });
+      getMedia(el, tag, u);
     }
   }
   function walk(node){
@@ -581,6 +637,147 @@ function bridgeRuntime(o){
   }
   new MutationObserver(function(ms){ ms.forEach(function(m){ if (m.type === 'attributes') walk(m.target); else m.addedNodes.forEach(walk); }); })
     .observe(document, { childList:true, subtree:true, attributes:true, attributeFilter:['src', 'href'] });
+
+  /* service worker emulation: a real service worker cannot be registered from inside a sandboxed page, so the worker script is
+     fetched through Wisp and run here with a real install -> activate lifecycle (same idea Vertx uses) */
+  if (o.sw) try {
+    var swRegs = new Map(), swReadyRes, swReady = new Promise(function(r){ swReadyRes = r; }), swCET = new EventTarget(), swActive = null;
+    var swBuiltins = new Set(Object.getOwnPropertyNames(window));
+    var swHidden = /^(window|document|parent|top|frames|opener|frameElement|localStorage|sessionStorage|alert|confirm|prompt|open|close|history|screen)$/;
+    var rawFetch = window.fetch;
+    var absU = function(u){ return new URL(String(u), document.baseURI).href; };
+    var swText = function(u){
+      if (/^(data|blob):/i.test(u)) return rawFetch.call(window, u).then(function(r){ return r.text(); });
+      return ask({ funnyFetch:1, url:u, method:'GET', headers:{} }).then(function(r){
+        if (r.err || r.status >= 400) throw new TypeError('Service worker script failed to load (' + (r.err || r.status) + ')');
+        return new TextDecoder().decode(r.buf);
+      });
+    };
+    var cachesOk = false; try { cachesOk = !!window.caches && typeof window.caches.open === 'function'; } catch(x){}
+    if (!cachesOk){
+      var stores = new Map();
+      var keyOf = function(r){ return typeof r === 'string' ? absU(r) : (r && r.url) || String(r); };
+      var getStore = function(n){ var m = stores.get(n); if (!m){ m = new Map(); stores.set(n, m); } return m; };
+      var mkCache = function(n){
+        var m = getStore(n);
+        return {
+          match:function(r){ var v = m.get(keyOf(r)); return Promise.resolve(v ? v.clone() : undefined); },
+          put:function(r, res){ m.set(keyOf(r), res.clone()); return Promise.resolve(); },
+          add:function(r){ return rawFetch.call(window, r).then(function(res){ m.set(keyOf(r), res); }); },
+          addAll:function(l){ return Promise.all([].map.call(l, function(r){ return rawFetch.call(window, r).then(function(res){ m.set(keyOf(r), res); }); })).then(function(){}); },
+          'delete':function(r){ return Promise.resolve(m['delete'](keyOf(r))); },
+          keys:function(){ return Promise.resolve(Array.from(m.keys()).map(function(u){ return new Request(u); })); }
+        };
+      };
+      var cacheStorage = {
+        open:function(n){ return Promise.resolve(mkCache(n)); },
+        has:function(n){ return Promise.resolve(stores.has(n)); },
+        'delete':function(n){ return Promise.resolve(stores['delete'](n)); },
+        keys:function(){ return Promise.resolve(Array.from(stores.keys())); },
+        match:function(r){ var k = keyOf(r), out; stores.forEach(function(m){ if (!out && m.has(k)) out = m.get(k).clone(); }); return Promise.resolve(out); }
+      };
+      try { Object.defineProperty(window, 'caches', { value:cacheStorage, configurable:true }); } catch(x){}
+    }
+    var swController = function(){ return container.controller; };
+    var fireCC = function(){ var e = new Event('controllerchange'); try { swCET.dispatchEvent(e); } catch(x){} if (typeof container.oncontrollerchange === 'function') try { container.oncontrollerchange(e); } catch(x){} };
+    var register = function(url, opts){
+      var scriptURL = absU(url);
+      if (swRegs.has(scriptURL)) return swRegs.get(scriptURL).promise;
+      var entry = {}; swRegs.set(scriptURL, entry);
+      var swET = new EventTarget(), scopeET = new EventTarget();
+      var sw = { scriptURL:scriptURL, state:'parsed', onstatechange:null, onerror:null,
+        postMessage:function(d){ scopeMsg(d); },
+        addEventListener:function(t, f, p){ swET.addEventListener(t, f, p); }, removeEventListener:function(t, f, p){ swET.removeEventListener(t, f, p); }, dispatchEvent:function(e){ return swET.dispatchEvent(e); } };
+      var setState = function(st){ sw.state = st; var e = new Event('statechange'); try { swET.dispatchEvent(e); } catch(x){} if (typeof sw.onstatechange === 'function') try { sw.onstatechange(e); } catch(x){} };
+      var client = { id:'funny-client', type:'window', url:document.baseURI, visibilityState:'visible', focused:true, frameType:'top-level',
+        focus:function(){ return Promise.resolve(client); },
+        navigate:function(u){ post({ funny:1, url:absU(u) }); return Promise.resolve(client); },
+        postMessage:function(d){ var e = new MessageEvent('message', { data:d }); try { swCET.dispatchEvent(e); } catch(x){} if (typeof container.onmessage === 'function') try { container.onmessage(e); } catch(x){} } };
+      var none = function(){ return Promise.resolve(); };
+      var reg = { scope:(opts && opts.scope) ? absU(opts.scope) : scriptURL.slice(0, scriptURL.lastIndexOf('/') + 1), updateViaCache:(opts && opts.updateViaCache) || 'imports',
+        installing:null, waiting:null, active:null, onupdatefound:null,
+        navigationPreload:{ enable:none, disable:none, setHeaderValue:none, getState:function(){ return Promise.resolve({ enabled:false, headerValue:'' }); } },
+        pushManager:{ subscribe:function(){ return Promise.reject(new DOMException('Push is not available here', 'NotAllowedError')); }, getSubscription:function(){ return Promise.resolve(null); }, permissionState:function(){ return Promise.resolve('prompt'); } },
+        sync:{ register:none, getTags:function(){ return Promise.resolve([]); } },
+        update:function(){ return Promise.resolve(reg); },
+        unregister:function(){ swRegs['delete'](scriptURL); if (container.controller === sw){ container.controller = null; swActive = null; } return Promise.resolve(true); },
+        showNotification:none, getNotifications:function(){ return Promise.resolve([]); }, addEventListener:function(){}, removeEventListener:function(){} };
+      var scope = { addEventListener:function(t, f, p){ scopeET.addEventListener(t, f, p); }, removeEventListener:function(t, f, p){ scopeET.removeEventListener(t, f, p); }, dispatchEvent:function(e){ return scopeET.dispatchEvent(e); },
+        skipWaiting:none,
+        clients:{ claim:function(){ container.controller = sw; swActive = scopeApi; fireCC(); return Promise.resolve(); }, matchAll:function(){ return Promise.resolve([client]); }, get:function(){ return Promise.resolve(client); }, openWindow:function(u){ post({ funny:1, url:absU(u), newtab:true }); return Promise.resolve(client); } },
+        registration:reg, serviceWorker:sw, caches:window.caches, fetch:function(){ return rawFetch.apply(window, arguments); },
+        location:new URL(scriptURL), importScripts:null, onmessage:null, oninstall:null, onactivate:null, onfetch:null, onpush:null, onnotificationclick:null };
+      var get = function(k){
+        if (k in scope) return scope[k];
+        if (typeof k !== 'string' || swHidden.test(k) || !swBuiltins.has(k)) return undefined;
+        var v = window[k]; return (typeof v === 'function' && !v.prototype) ? v.bind(window) : v;
+      };
+      var setv = function(t, k, v){ scope[k] = v; return true; };
+      var selfProxy = new Proxy(scope, { get:function(t, k){ return get(k); }, set:setv, has:function(t, k){ return (k in scope) || (typeof k === 'string' && !swHidden.test(k) && swBuiltins.has(k)); } });
+      var withProxy = new Proxy(scope, { get:function(t, k){ return k === Symbol.unscopables ? undefined : get(k); }, set:setv, has:function(){ return true; } });
+      scope.self = selfProxy; scope.globalThis = selfProxy;
+      var fire = function(type){
+        var e = new Event(type), waits = []; e.waitUntil = function(p){ waits.push(Promise.resolve(p)); };
+        try { scopeET.dispatchEvent(e); } catch(x){}
+        if (typeof scope['on' + type] === 'function') try { scope['on' + type](e); } catch(x){}
+        return Promise.all(waits)['catch'](function(){});
+      };
+      var scopeMsg = function(d){ var e = new MessageEvent('message', { data:d }); e.waitUntil = function(){}; try { scopeET.dispatchEvent(e); } catch(x){} if (typeof scope.onmessage === 'function') try { scope.onmessage(e); } catch(x){} };
+      var scopeApi = { hasFetch:function(){ return !!scope.onfetch || scopeET.__n; },
+        dispatchFetch:function(request){
+          var e = new Event('fetch'), done = null;
+          e.request = request; e.clientId = ''; e.resultingClientId = ''; e.preloadResponse = Promise.resolve(undefined);
+          e.respondWith = function(p){ done = Promise.resolve(p); };
+          e.waitUntil = function(){};
+          try { scopeET.dispatchEvent(e); } catch(x){}
+          if (!done && typeof scope.onfetch === 'function') try { scope.onfetch(e); } catch(x){}
+          return done ? done['catch'](function(){ return null; }) : Promise.resolve(null);
+        } };
+      var origAdd = scopeET.addEventListener.bind(scopeET);
+      scopeET.addEventListener = function(t, f, p){ if (t === 'fetch') scopeET.__n = true; return origAdd(t, f, p); };
+      entry.promise = swText(scriptURL).then(function(src){
+        var fetched = {}, order = [];
+        var attempt = function(n){
+          if (n > 25) throw new Error('importScripts limit exceeded');
+          scope.importScripts = function(){ for (var a = 0; a < arguments.length; a++){ var u = absU(arguments[a]); if (fetched[u] == null) throw { __imp:u }; } };
+          var body = order.map(function(u){ return fetched[u]; }).join('\n;\n');
+          try { new Function('__sc', 'with(__sc){return (function(){\n' + body + '\n;\n' + src + '\n}).call(self);}').call(selfProxy, withProxy); }
+          catch(err){
+            if (err && err.__imp) return swText(err.__imp).then(function(t){ fetched[err.__imp] = t; order.push(err.__imp); return attempt(n + 1); });
+            throw err;
+          }
+          return null;
+        };
+        return Promise.resolve(attempt(0));
+      }).then(function(){
+        entry.reg = reg; reg.installing = sw; sw.state = 'installing';
+        setTimeout(function(){
+          setState('installing');
+          if (typeof reg.onupdatefound === 'function') try { reg.onupdatefound(new Event('updatefound')); } catch(x){}
+          fire('install').then(function(){ reg.installing = null; reg.active = sw; setState('installed'); setState('activating'); return fire('activate'); })
+            .then(function(){ setState('activated'); if (!container.controller){ container.controller = sw; swActive = scopeApi; fireCC(); } swReadyRes(reg); });
+        }, 0);
+        return reg;
+      })['catch'](function(err){ swRegs['delete'](scriptURL); throw err; });
+      return entry.promise;
+    };
+    var container = { controller:null, ready:swReady, oncontrollerchange:null, onmessage:null, onmessageerror:null,
+      addEventListener:function(t, f, p){ swCET.addEventListener(t, f, p); }, removeEventListener:function(t, f, p){ swCET.removeEventListener(t, f, p); }, dispatchEvent:function(e){ return swCET.dispatchEvent(e); },
+      startMessages:function(){},
+      register:function(u, p){ try { return register(u, p || {}); } catch(e){ return Promise.reject(e); } },
+      getRegistration:function(){ var out; swRegs.forEach(function(v){ if (!out && v.reg) out = v.reg; }); return Promise.resolve(out); },
+      getRegistrations:function(){ var out = []; swRegs.forEach(function(v){ if (v.reg) out.push(v.reg); }); return Promise.resolve(out); } };
+    try { Object.defineProperty(navigator, 'serviceWorker', { get:function(){ return container; }, configurable:true }); } catch(x){}
+    // page requests go through the worker's fetch handler when it has one; if it does not answer, the normal request is used
+    var plainFetch = window.fetch;
+    window.fetch = function(input, init){
+      var args = arguments;
+      if (!swActive || !swActive.hasFetch()) return plainFetch.apply(window, args);
+      var rq; try { rq = new Request(input, init); } catch(x){ return plainFetch.apply(window, args); }
+      if (!/^https?:/i.test(rq.url)) return plainFetch.apply(window, args);
+      return swActive.dispatchFetch(rq).then(function(res){ return res || plainFetch.apply(window, args); });
+    };
+  } catch(swErr){}
 
   if (o.log){
     var fmt = function(a){ if (typeof a === 'string') return a; try { return a instanceof Error ? (a.stack || String(a)) : JSON.stringify(a); } catch(x){ return String(a); } };
@@ -645,6 +842,7 @@ function variants(u){
 const TRACKERS = ['google-analytics.com','googletagmanager.com','doubleclick.net','googlesyndication.com','googleadservices.com','adservice.google.com','connect.facebook.net','hotjar.com','scorecardresearch.com','quantserve.com','taboola.com','outbrain.com','adnxs.com','criteo.com','amazon-adsystem.com','moatads.com','pubmatic.com','rubiconproject.com','mixpanel.com','segment.io','segment.com','fullstory.com','clarity.ms','ads-twitter.com','analytics.tiktok.com','adsrvr.org','openx.net','casalemedia.com'];
 function isTracker(u){ try { const h = new URL(u).hostname; return TRACKERS.some(d => h === d || h.endsWith('.' + d)); } catch(e){ return false; } }
 const CACHE = new Map();
+const PIXEL = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 
 function sniffImg(ab){
   const b = new Uint8Array(ab.slice(0, 16));
@@ -658,11 +856,15 @@ function sniffImg(ab){
   try { if (/<svg[\s>]/i.test(new TextDecoder().decode(ab.slice(0, 512)))) return 'image/svg+xml'; } catch(e){}
   return '';
 }
-const LIBCURL = 'https://cdn.jsdelivr.net/npm/libcurl.js@0.7.1/';
-const libBases = () => (S.mirrors === false ? [MIRROR_HOSTS[0]] : MIRROR_HOSTS).map(h => 'https://' + h + '/npm/libcurl.js@0.7.1/');
+const LIBCURL = 'https://cdn.jsdelivr.net/npm/libcurl.js@0.7.4/';   // same pinned version Vertx ships
+const libBases = () => {
+  const hosts = S.mirrors === false ? [MIRROR_HOSTS[0]] : MIRROR_HOSTS;
+  // 0.7.4 (what Vertx uses) first; the old 0.7.1 stays as a last resort
+  return hosts.map(h => 'https://' + h + '/npm/libcurl.js@0.7.4/').concat(['https://cdn.jsdelivr.net/npm/libcurl.js@0.7.1/']);
+};
 const Engine = (() => {
   let ready = false, initP = null, wasm = false, initId = 0, curWisp = '';
-  const runtime = () => '(' + bridgeRuntime.toString() + ')(' + JSON.stringify({ nav:true, log:S.devConsole !== false, panic:S.panicKey || '' }) + ')';
+  const runtime = u => '(' + bridgeRuntime.toString() + ')(' + JSON.stringify({ nav:true, sw:true, log:S.devConsole !== false, panic:S.panicKey || '', ua:(UAS[S.uaPreset] || {}).ua || '', ck:(u && S.cookies !== false) ? Jar.get(u, true) : '' }) + ')';
   const CSP = "default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob: data:; script-src 'unsafe-inline' 'unsafe-eval' data:; font-src data: blob:; media-src blob: data:; connect-src data: blob:; worker-src blob:; frame-src about: data: blob:";
   // keep fetched code from closing its own tag (this is what made raw code show up on pages)
   const safeJs  = s => String(s).replace(/<\/(script)/gi, '<\\/$1').replace(new RegExp('<' + '!--', 'g'), '<\\!--');
@@ -690,7 +892,7 @@ const Engine = (() => {
             if (!window.libcurl) await loadScript(base + 'libcurl.js');
             if (!wasm){ await libcurl.load_wasm(base + 'libcurl.wasm'); wasm = true; }
             break;
-          } catch(e){ lastE = e; }
+          } catch(e){ lastE = e; if (!wasm) { try { window.libcurl = undefined; } catch(x){} } }
         }
         if (!wasm) throw lastE || new Error('Could not load the engine from any mirror.');
       }
@@ -714,14 +916,148 @@ const Engine = (() => {
   const abs2 = (u, base) => { try { return new URL(u, base).href; } catch(e){ return null; } };
   const FONT = /\.(woff2?|ttf|otf|eot)(\?|#|$)/i;
   const IMGTYPE = { png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', webp:'image/webp', svg:'image/svg+xml', avif:'image/avif', ico:'image/x-icon', bmp:'image/bmp' };
+  /* ---- cookie jar: sites set cookies on redirects and API calls; without them every bot-check loops and sessions break ---- */
+  const Jar = (() => {
+    const KJ = 'funnypy-jar'; let jar = [];
+    try { jar = JSON.parse(localStorage.getItem(KJ) || '[]'); } catch(e){ jar = []; }
+    const save = () => { try { localStorage.setItem(KJ, JSON.stringify(jar.slice(-500))); } catch(e){} };
+    const dm = (h, d) => h === d || h.endsWith('.' + d);
+    function set(url, line, fromScript){
+      let u; try { u = new URL(url); } catch(e){ return; }
+      const parts = String(line).split(';'), nv = parts.shift(), i = nv.indexOf('=');
+      if (i < 1) return;
+      const c = { n:nv.slice(0, i).trim(), v:nv.slice(i + 1).trim(), d:u.hostname.toLowerCase(), host:true, p:(u.pathname.replace(/\/[^\/]*$/, '') || '/'), s:false, h:false, e:0 };
+      for (const at of parts){
+        const j = at.indexOf('='), k = (j < 0 ? at : at.slice(0, j)).trim().toLowerCase(), val = j < 0 ? '' : at.slice(j + 1).trim();
+        if (k === 'domain' && val){ const dd = val.replace(/^\./, '').toLowerCase(); if (dm(c.d, dd)){ c.d = dd; c.host = false; } }
+        else if (k === 'path' && val[0] === '/') c.p = val;
+        else if (k === 'secure') c.s = true;
+        else if (k === 'httponly' && !fromScript) c.h = true;
+        else if (k === 'max-age'){ const m = parseInt(val, 10); if (!isNaN(m)) c.e = m <= 0 ? 1 : Date.now() + m * 1000; }
+        else if (k === 'expires' && !c.e){ const t = Date.parse(val); if (!isNaN(t)) c.e = t; }
+      }
+      jar = jar.filter(x => !(x.n === c.n && x.d === c.d && x.p === c.p));
+      if (!(c.e && c.e <= Date.now())) jar.push(c);
+      save();
+    }
+    function get(url, forScript){
+      let u; try { u = new URL(url); } catch(e){ return ''; }
+      const h = u.hostname.toLowerCase(), t = Date.now();
+      return jar.filter(c => (!c.e || c.e > t) && (c.host ? h === c.d : dm(h, c.d)) && (c.p === '/' || u.pathname === c.p || u.pathname.startsWith(c.p.endsWith('/') ? c.p : c.p + '/')) && (!c.s || u.protocol === 'https:') && !(forScript && c.h))
+        .sort((x, y) => y.p.length - x.p.length).map(c => c.n + '=' + c.v).join('; ');
+    }
+    function from(url, r){
+      let list = [];
+      try { if (r.raw_headers) list = r.raw_headers.filter(x => /^set-cookie$/i.test(x[0])).map(x => x[1]); } catch(e){}
+      if (!list.length){ try { if (r.headers.getSetCookie) list = r.headers.getSetCookie(); } catch(e){} }
+      if (!list.length){ try { const v = r.headers.get('set-cookie'); if (v) list = v.split(/,(?=\s*[^;,=\s]+=)/); } catch(e){} }
+      list.forEach(l => set(url, l));
+    }
+    return { set, get, from, clear(){ jar = []; save(); } };
+  })();
+
+  /* ---- headers a real browser sends (many sites flag requests that lack them as robots) ---- */
+  const UAS = {
+    chromeWin:{ ua:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36', plat:'Windows', mobile:false, chrome:true },
+    android:{ ua:'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36', plat:'Android', mobile:true, chrome:true },
+    iphone:{ ua:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' },
+    firefox:{ ua:'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:140.0) Gecko/20100101 Firefox/140.0' }
+  };
+  const curUA = () => UAS[S.uaPreset] || null;
+  const chHeaders = () => {
+    const h = {}, P = curUA();
+    if (P){
+      if (P.chrome){ h['sec-ch-ua'] = '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"'; h['sec-ch-ua-mobile'] = P.mobile ? '?1' : '?0'; h['sec-ch-ua-platform'] = '"' + P.plat + '"'; }
+      return h;
+    }
+    try { const U = navigator.userAgentData; if (U && U.brands){ h['sec-ch-ua'] = U.brands.map(b => '"' + b.brand + '";v="' + b.version + '"').join(', '); h['sec-ch-ua-mobile'] = U.mobile ? '?1' : '?0'; h['sec-ch-ua-platform'] = '"' + (U.platform || 'Windows') + '"'; } } catch(e){}
+    return h;
+  };
+  const siteRel = (url, ref) => { try { const x = new URL(url), y = new URL(ref); if (x.origin === y.origin) return 'same-origin'; const r2 = q => q.split('.').slice(-2).join('.'); return r2(x.hostname) === r2(y.hostname) ? 'same-site' : 'cross-site'; } catch(e){ return 'cross-site'; } };
+  function buildHeaders(url, given, nav, prev, method){
+    const g = {}; for (const k in (given || {})) g[k.toLowerCase()] = given[k];
+    const strict = S.strictHdr !== false, P = curUA();
+    const h = { 'user-agent':P ? P.ua : navigator.userAgent, 'accept-language':(navigator.language || 'en-US') + ',en;q=0.9', ...(strict ? chHeaders() : {}) };
+    if (!strict){
+      if (nav){ h.accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'; if (prev) h.referer = prev; }
+      return { ...h, ...g };
+    }
+    if (nav){
+      Object.assign(h, { 'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7', 'upgrade-insecure-requests':'1', 'sec-fetch-dest':'document', 'sec-fetch-mode':'navigate', 'sec-fetch-site':prev ? siteRel(url, prev) : 'none', 'sec-fetch-user':'?1', 'cache-control':'max-age=0' });
+      if (prev) h.referer = prev;
+    } else {
+      const ref = g.referer || '', acc = (g.accept || '').toLowerCase(), path = url.split('?')[0].split('#')[0].toLowerCase();
+      let dest = 'empty';
+      if (/^image\//.test(acc) || /\.(png|jpe?g|gif|webp|avif|svg|ico|bmp)$/.test(path)) dest = 'image';
+      else if (/text\/css/.test(acc) || /\.css$/.test(path)) dest = 'style';
+      else if (/\.m?js$/.test(path)) dest = 'script';
+      else if (FONT.test(path)) dest = 'font';
+      h['sec-fetch-dest'] = dest;
+      h['sec-fetch-mode'] = dest === 'empty' || dest === 'font' ? 'cors' : 'no-cors';
+      h['sec-fetch-site'] = ref ? siteRel(url, ref) : 'same-origin';
+      if (ref && (dest === 'empty' || dest === 'font') && (method !== 'GET' || h['sec-fetch-site'] !== 'same-origin')){ try { h.origin = new URL(ref).origin; } catch(e){} }
+      if (dest === 'empty' && !g.accept) h.accept = '*/*';
+    }
+    return { ...h, ...g };
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function rotate(){
+    const t = Date.now();
+    if (t - (rotate.t || 0) > 4000){ rotate.t = t; try { await nextServer(); } catch(e){} }
+    else if (initP){ try { await initP; } catch(e){} }
+  }
+  const RETRY_STATUS = s2 => s2 === 429 || s2 === 500 || s2 === 502 || s2 === 503 || s2 === 504 || (s2 >= 520 && s2 <= 524);
+  // one request, the way a browser makes it: cookies, redirects followed by hand (so Set-Cookie on each hop is kept), retries on server errors
+  async function doFetch(url, o, nav){
+    const method = String((o && o.method) || 'GET').toUpperCase(), aborted = () => !!(o && o.signal && o.signal.aborted);
+    const jarOn = S.cookies !== false, wantFollow = !(o && o.redirect && o.redirect !== 'follow');
+    const given = (o && o.headers) || {}, hasCookie = Object.keys(given).some(k => k.toLowerCase() === 'cookie');
+    const curl = async (cur, req) => {
+      if (doFetch.noManual && req.redirect === 'manual') req = { ...req, redirect:'follow' };
+      try { return await libcurl.fetch(cur, req); }
+      catch(e1){
+        if (aborted()) throw e1;
+        if (req.redirect === 'manual' && /redirect|manual|invalid/i.test(String((e1 && e1.message) || e1))){ doFetch.noManual = true; return await libcurl.fetch(cur, { ...req, redirect:'follow' }); }
+        if (S.retry !== false && /code 7\b|could not connect|connect|websocket|wisp|network/i.test(String((e1 && e1.message) || e1))){ await rotate(); return await libcurl.fetch(cur, req); }
+        throw e1;
+      }
+    };
+    let r;
+    for (let attempt = 0; ; attempt++){
+      let cur = url, m = method, body = o && o.body, hops = 0, prev = (given.Referer || given.referer || '');
+      for (;;){
+        const hd = buildHeaders(cur, hops ? { ...given, Referer:prev } : given, nav, hops ? prev : '', m);
+        if (jarOn && !hasCookie){ const ck = Jar.get(cur); if (ck) hd.cookie = ck; }
+        const req = { ...(o || {}), method:m, headers:hd, redirect:(jarOn && wantFollow) ? 'manual' : ((o && o.redirect) || 'follow') };
+        if (m === 'GET' || m === 'HEAD') delete req.body; else if (body != null) req.body = body;
+        r = await curl(cur, req);
+        if (jarOn) Jar.from(cur, r);
+        const loc = r.headers && r.headers.get('location');
+        if (jarOn && wantFollow && r.status >= 300 && r.status < 400 && loc){
+          if (++hops > 12) throw new Error('Too many redirects');
+          const nx = abs2(loc, cur);
+          if (!nx) break;
+          if (r.status === 303 || ((r.status === 301 || r.status === 302) && m === 'POST')){ m = 'GET'; body = undefined; }
+          prev = cur; cur = nx; continue;
+        }
+        break;
+      }
+      if (hops && !r.url || (hops && r.url !== cur)){ try { Object.defineProperty(r, 'url', { value:cur, configurable:true }); } catch(e){} }
+      if (method === 'GET' && S.retry !== false && attempt < 2 && RETRY_STATUS(r.status) && !aborted()){
+        await sleep(500 * (attempt + 1) + Math.random() * 300);
+        if (attempt === 1) await rotate();      // last try: come from a different server
+        continue;
+      }
+      return r;
+    }
+  }
   // fetch through Wisp; for jsDelivr links, fall back across the mirrors
-  async function cfetch(u, o, log){
+  async function cfetch(u, o, log, nav){
     const list = variants(u); let lastR = null, lastE = null;
-    const oo = { ...(o || {}), headers:{ 'User-Agent':navigator.userAgent, 'Accept-Language':(navigator.language || 'en-US') + ',en;q=0.9', ...((o && o.headers) || {}) } };
     for (const v of list){
       const t0 = performance.now();
       try {
-        const r = await libcurl.fetch(v, oo);
+        const r = await doFetch(v, o, nav);
         if (log && S.devNet !== false){ try { log({ method:(o && o.method) || 'GET', url:u, status:r.status, ms:Math.round(performance.now() - t0), size:+r.headers.get('content-length') || 0, type:(r.headers.get('content-type') || '').split(';')[0] }); } catch(e){} }
         if (r.status < 400 || list.length === 1) return r;
         lastR = r;
@@ -754,7 +1090,7 @@ const Engine = (() => {
     try { if (/(^|\.)ngrok(-free)?\.(dev|app|io)$/i.test(new URL(url).hostname)) hdr['ngrok-skip-browser-warning'] = '1'; } catch(e){}
     if (req && req.method === 'POST'){ opts.method = 'POST'; opts.body = req.body || ''; hdr['Content-Type'] = 'application/x-www-form-urlencoded'; }
     if (Object.keys(hdr).length) opts.headers = hdr;
-    const r = await F(url, opts);
+    const r = await cfetch(url, opts, log, true);
     say('Downloading page…', 35);
     const finalUrl = r.url || url;
     const rawType = r.headers.get('content-type') || '';
@@ -762,6 +1098,9 @@ const Engine = (() => {
     const isSvg = /svg/.test(type);
     if (/^image\//.test(type) && !isSvg) return { url:finalUrl, ...page(finalUrl, '<img style="max-width:100%" src="' + await toData(await r.blob()) + '">') };
     const buf = await r.arrayBuffer();
+    if (r.status >= 400 && buf.byteLength < 300 && !/^(image|video|audio)\//.test(type)){
+      return { url:finalUrl, ...page('Error ' + r.status, '<h3 style="margin-top:0">The site answered with error ' + r.status + (r.statusText ? ' (' + esc(r.statusText) + ')' : '') + '</h3><p>The page itself came back empty, so there is nothing to show. Reload to try again, or choose another Wisp server in Settings → Proxy.</p>') };
+    }
     let html = null;
     if (/html/.test(type)) html = decode(buf, rawType);
     else if (/^text\/|json|xml|^$/.test(type) || isSvg){
@@ -795,7 +1134,8 @@ const Engine = (() => {
       const ck = (kind || 't') + '|' + a;
       if (S.cache && CACHE.has(ck)) return CACHE.get(ck);
       try {
-        let x = await F(a, { signal, headers:{ Referer:finalUrl } });
+        const hd = { Referer:finalUrl }; if (kind && !FONT.test(a)) hd.Accept = 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8';
+        let x = await F(a, { signal, headers:hd });
         if (x.status === 400 || x.status === 401 || x.status === 403) x = await F(a, { signal });
         if (x.status >= 400) return null;
         let out;
@@ -895,8 +1235,8 @@ const Engine = (() => {
       if (!s) return;
       if (/^data:/i.test(s)){ n.setAttribute('src', s); return; }
       if (!S.images) return n.removeAttribute('src');
-      if (i >= 500){ const a2 = abs2(s, finalUrl); if (a2) n.setAttribute('src', a2); return; }
-      jobs.push(grab(s, 'blob').then(b => { if (b) n.setAttribute('src', b); else { const a2 = abs2(s, finalUrl); if (a2) n.setAttribute('src', a2); else n.removeAttribute('src'); } }));
+      // not downloaded up front: the page shows right away and each image is fetched when it is near the screen
+      { const a2 = abs2(s, finalUrl); if (a2){ n.setAttribute('data-fp-img', a2); n.setAttribute('src', PIXEL); } else n.removeAttribute('src'); }
     });
     doc.querySelectorAll('[style*="url("]').forEach(n => jobs.push(inlineCss(n.getAttribute('style'), finalUrl, 1).then(c => n.setAttribute('style', c))));
     await Promise.all(jobs);
@@ -905,7 +1245,7 @@ const Engine = (() => {
     deferred.forEach(n => { if (n.isConnected) doc.body.append(n); });
     const meta = doc.createElement('meta'); meta.httpEquiv = 'Content-Security-Policy'; meta.content = CSP;
     const base = doc.createElement('base'); base.href = finalUrl;
-    const rt = doc.createElement('script'); rt.textContent = runtime();
+    const rt = doc.createElement('script'); rt.textContent = runtime(finalUrl);
     doc.head.prepend(meta, base, rt);
     if (mods.size){
       const im = doc.createElement('script'); im.setAttribute('type', 'importmap');
@@ -924,24 +1264,27 @@ const Engine = (() => {
     if (!ready) throw new Error('Engine is not connected. Pick a Wisp server in Settings → Proxy and try again.');
     return cfetch(url, opts, log);
   }
-  return { init, load, raw, limits, servers, nextServer, get ready(){ return ready; } };
+  return { init, load, raw, limits, servers, nextServer, setCookie:(u, l) => Jar.set(u, l, true), docCookies:u => Jar.get(u, true), clearCookies:() => Jar.clear(), get ready(){ return ready; } };
 })();
 
 /* ===== 2. SETTINGS ===== */
-const MERCURY = 'wss://wisp.mercurywork.shop/';
+const MERCURY = 'wss://wisp.freewisp.org/';   // default server (freewisp)
 const DEFAULTS = {
-  wisp:MERCURY, wispPreset:MERCURY, conns:50, images:true, scripts:true,
+  wisp:MERCURY, wispPreset:MERCURY, cookies:true, strictHdr:true, uaPreset:'auto', conns:50, images:true, scripts:true,
   search:'https://duckduckgo.com/?q=%s', home:'', safe:true,
   theme:'dark', accent:'#6c8cff', bg:'static', grid:true, anim:true,
   cloak:false, spoof:false, spoofUrl:'https://classroom.google.com/',
   detOn:true, detLevel:'medium', detMode:'warn', detUrl:true, detPage:true, detSafe:true, detAllow:'', detBlock:'',
   tabPreset:'none', tabTitle:'', tabIcon:'',
   newTabLinks:false, confirmClose:false, searchCustom:'', zoom:'100', forceDark:false, coverPreset:'shot', coverImg:'', coverData:'', panicKey:'', panicUrl:'', blockTrackers:false, timeout:'25', retry:true, mirrors:true, cache:true, devConsole:true, devNet:true,
+  aiProvider:'default', gameSite:'lumin',
+  font:'system', fontCustom:'', fontData:'', cursor:'default', cursorImg:'', cursorData:'', bgImg:'', bgData:'', bgFit:'cover', bgColor:'#1b2030', bgColor2:'#3b2a6b',
   customWisps:[], favs:[{n:'DuckDuckGo',u:'https://duckduckgo.com'},{n:'Wikipedia',u:'https://en.wikipedia.org'}]
 };
 const KEY = 'funnypy-settings';
 let S = JSON.parse(JSON.stringify(DEFAULTS));
 try { S = {...S, ...JSON.parse(localStorage.getItem(KEY) || '{}')}; } catch(e){}
+if (S.wispMig !== 2){ if (S.wispPreset !== 'custom'){ S.wisp = MERCURY; S.wispPreset = MERCURY; } S.wispMig = 2; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e){} }
 if (!Array.isArray(S.favs)) S.favs = [];
 if (!Array.isArray(S.customWisps)) S.customWisps = [];
 
@@ -957,12 +1300,13 @@ function applySettings(){
   document.body.classList.toggle('grid', S.grid && S.bg === 'static');
   document.body.classList.toggle('noanim', !S.anim);
   startBg();
+  applyLook();
   applyTabCloak();
   applyExtras();
   if (active) $('url').value = shownUrl(active);
 }
 const SIMPLE = {'s-search':'search','s-home':'home','s-safe':'safe','s-theme':'theme','s-accent':'accent','s-bg':'bg','s-grid':'grid','s-anim':'anim',
-  's-cloak':'cloak','s-spoof':'spoof','s-spoofUrl':'spoofUrl','s-detOn':'detOn','s-detLevel':'detLevel','s-detMode':'detMode','s-detUrl':'detUrl','s-detPage':'detPage','s-detSafe':'detSafe','s-detAllow':'detAllow','s-detBlock':'detBlock','s-conns':'conns','s-images':'images','s-scripts':'scripts','s-tabPreset':'tabPreset','s-tabTitle':'tabTitle','s-tabIcon':'tabIcon','s-newTabLinks':'newTabLinks','s-confirmClose':'confirmClose','s-searchCustom':'searchCustom','s-zoom':'zoom','s-forceDark':'forceDark','s-coverPreset':'coverPreset','s-coverImg':'coverImg','s-panicUrl':'panicUrl','s-blockTrackers':'blockTrackers','s-timeout':'timeout','s-retry':'retry','s-mirrors':'mirrors','s-cache':'cache','s-devConsole':'devConsole','s-devNet':'devNet'};
+  's-cloak':'cloak','s-spoof':'spoof','s-spoofUrl':'spoofUrl','s-detOn':'detOn','s-detLevel':'detLevel','s-detMode':'detMode','s-detUrl':'detUrl','s-detPage':'detPage','s-detSafe':'detSafe','s-detAllow':'detAllow','s-detBlock':'detBlock','s-conns':'conns','s-uaPreset':'uaPreset','s-cookies':'cookies','s-strictHdr':'strictHdr','s-images':'images','s-scripts':'scripts','s-tabPreset':'tabPreset','s-tabTitle':'tabTitle','s-tabIcon':'tabIcon','s-newTabLinks':'newTabLinks','s-confirmClose':'confirmClose','s-searchCustom':'searchCustom','s-zoom':'zoom','s-forceDark':'forceDark','s-coverPreset':'coverPreset','s-coverImg':'coverImg','s-panicUrl':'panicUrl','s-blockTrackers':'blockTrackers','s-timeout':'timeout','s-retry':'retry','s-mirrors':'mirrors','s-cache':'cache','s-devConsole':'devConsole','s-devNet':'devNet','s-aiProvider':'aiProvider','gsite':'gameSite','s-font':'font','s-fontCustom':'fontCustom','s-cursor':'cursor','s-cursorImg':'cursorImg','s-bgImg':'bgImg','s-bgFit':'bgFit','s-bgColor':'bgColor','s-bgColor2':'bgColor2'};
 function syncUI(){
   for (const [id,k] of Object.entries(SIMPLE)){
     const el = $(id); if (el.type === 'checkbox') el.checked = !!S[k]; else el.value = S[k];
@@ -987,6 +1331,7 @@ function bindSettings(){
     el.addEventListener('change', () => {
       S[k] = el.type === 'checkbox' ? el.checked : el.value.trim();
       saveSettings(); applySettings();
+      if (k === 'uaPreset' || k === 'strictHdr') CACHE.clear();
       if (k === 'conns') Engine.limits();
     });
   }
@@ -1242,7 +1587,7 @@ let bgRAF = 0;
 function startBg(){
   cancelAnimationFrame(bgRAF);
   const c = $('bgc'), mode = S.bg;
-  if (mode === 'static'){ c.style.display = 'none'; return; }
+  if (['matrix','stars','aurora'].indexOf(mode) < 0){ c.style.display = 'none'; return; }
   c.style.display = 'block';
   const x = c.getContext('2d'), dark = S.theme === 'dark';
   const base = dark ? '#0f1115' : '#f4f5f8', fade = dark ? 'rgba(15,17,21,.12)' : 'rgba(244,245,248,.12)';
@@ -1295,8 +1640,8 @@ function startBg(){
 addEventListener('resize', () => { clearTimeout(startBg.t); startBg.t = setTimeout(startBg, 150); });
 
 /* ===== 4. TABS + NAVIGATION ===== */
-const SANDBOX_PROXY = 'allow-scripts allow-forms allow-downloads';
-const SANDBOX_APP = 'allow-scripts allow-forms allow-pointer-lock allow-modals allow-downloads';
+const SANDBOX_PROXY = 'allow-scripts allow-same-origin allow-forms allow-downloads';
+const SANDBOX_APP = 'allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-modals allow-downloads';
 const SANDBOX_PANEL = 'allow-scripts allow-forms allow-pointer-lock allow-modals allow-downloads';
 let tabs = [], active = null, uid = 0;
 
@@ -1385,11 +1730,13 @@ function makeTab(){
   t.frame = document.createElement('iframe');
   t.frame.className = 'view';
   t.frame.setAttribute('sandbox', SANDBOX_PROXY);
-  t.frame.setAttribute('allow', 'fullscreen; gamepad; autoplay; clipboard-write');
   t.home = document.createElement('div');
   t.home.className = 'home';
-  t.home.innerHTML = '<h1>funny.py</h1><form><input placeholder="Search or enter address" autocomplete="off"></form><div class="favs"></div><div class="msg"></div><div class="credit">Made by ppkiwi</div>';
+  t.home.innerHTML = '<h1>funny.py</h1><form><input placeholder="Search or enter address" autocomplete="off"></form><div class="favs"></div><div class="msg"></div><div class="credit">Made by ppkiwi</div><button class="dc" title="Join our Discord"><img alt="" width="20" height="20" src="https://www.google.com/s2/favicons?sz=64&domain=discord.com"><span>Discord</span></button>';
   t.msg = t.home.querySelector('.msg');
+  const dc = t.home.querySelector('.dc');
+  dc.querySelector('img').onerror = e => { e.target.replaceWith(document.createTextNode('💬')); };
+  dc.onclick = () => { t.isApp = false; go(t, 'https://discord.gg/Wwp6vwneGK'); };
   t.home.querySelector('form').onsubmit = e => { e.preventDefault(); t.isApp = false; go(t, e.target.querySelector('input').value); };
   t.loader = mkLoader(); t.sd = document.createElement('div'); t.sd.className = 'sd'; t.block = document.createElement('div'); t.block.className = 'block';
   $('views').append(t.frame, t.home, t.sd, t.block, t.loader);
@@ -1519,8 +1866,10 @@ async function go(t, input, fromHistory, req, depth){
       t.direct = false; t.fallback = null; t.hideUrl = !!t.isApp;
       t.frame.removeAttribute('src'); t.frame.setAttribute('sandbox', t.isApp ? SANDBOX_APP : SANDBOX_PROXY);
       const k = t.ltok = {};
-      t.frame.onload = () => { t.frame.onload = null; if (t.ltok === k) setLoading(t, false); };
-      setTimeout(() => { if (t.ltok === k) setLoading(t, false); }, 10000);
+      t.frame.style.transition = ''; t.frame.style.opacity = '1';
+      const showIt = () => { t.frame.style.transition = S.anim ? 'opacity .2s ease-out' : ''; t.frame.style.opacity = '1'; };
+      t.frame.onload = () => { t.frame.onload = null; showIt(); if (t.ltok === k) setLoading(t, false); };
+      setTimeout(() => { showIt(); if (t.ltok === k) setLoading(t, false); }, 10000);
       setLoading(t, true, { step:'Rendering…', pct:95 });
       t.frame.srcdoc = res.html;
       t.url = res.url || url;
@@ -1529,7 +1878,6 @@ async function go(t, input, fromHistory, req, depth){
       if (!fromHistory){ t.hist = t.hist.slice(0, t.idx + 1); t.hist.push(t.url); t.idx = t.hist.length - 1; }
       select(t);
       showSd(t, rep);
-      setTimeout(() => blankCheck(t, t.url), 4500);
       if (res.refresh && (depth || 0) < 3) setTimeout(() => { if (t.abort === ctrl && t.url === (res.url || url)) go(t, res.refresh, false, null, (depth || 0) + 1); }, 150);
     };
     if (rep && rep.level === 'danger' && S.detMode === 'block' && !t.trust.has(url)){
@@ -1589,7 +1937,8 @@ async function loadBlank(b, url, req){
 }
 
 /* ----- blank-page detector: offer to open the site directly when a proxied page rendered nothing ----- */
-async function blankCheck(t, url){
+async function blankCheck(t, url, pass){
+  return; // blank-page warning removed
   if (!t.url || t.url !== url || t.direct || t.sdOn) return;
   const r = await devAsk(t, { funnyDom:1 });
   if (!r || t.url !== url || t.direct || t.sdOn) return;
@@ -1600,6 +1949,7 @@ async function blankCheck(t, url){
     const txt = (d.body ? d.body.textContent : '').replace(/\s+/g, ' ').trim();
     blank = txt.length < 15 && !d.querySelector('body img,body canvas,body video,body iframe,body svg,body input,body button,body a');
   } catch(e){}
+  if (blank && (pass || 0) < 2){ setTimeout(() => blankCheck(t, url, (pass || 0) + 1), 6000); return; }
   if (blank) showBlankBar(t, url);
 }
 function showBlankBar(t, url){
@@ -1610,40 +1960,20 @@ function showBlankBar(t, url){
   main.append(ttl, sub);
   const go2 = document.createElement('button'); go2.textContent = 'Open directly';
   go2.onclick = () => openDirect(t, url);
-  const sw2 = document.createElement('button'); sw2.textContent = 'Open with service worker'; sw2.onclick = () => openViaSW(t, url);
+  const nt = document.createElement('button'); nt.textContent = 'New tab';
+  nt.title = 'Some sites refuse to be shown inside another page; this always works';
+  nt.onclick = () => { try { window.open(url, '_blank', 'noopener'); } catch(e){} };
   const rl = document.createElement('button'); rl.textContent = 'Reload';
   rl.onclick = () => { t.sdOn = false; syncOverlays(t); go(t, url, true); };
   const x = document.createElement('button'); x.textContent = '✕'; x.onclick = () => { t.sdOn = false; syncOverlays(t); };
-  d.append(main, sw2, go2, rl, x);
+  d.append(main, go2, nt, rl, x);
   t.sdOn = true; syncOverlays(t);
-}
-/* ----- service worker mode: needs index.html + sw.js hosted together over https ----- */
-async function regSW(){
-  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) throw new Error('Service worker mode needs this page hosted on https together with sw.js (it does not work from a file or a sandboxed frame).');
-  const want = 'wisp=' + encodeURIComponent(S.wisp);
-  const reg = await navigator.serviceWorker.register('sw.js?' + want, { scope:'./' });
-  const t0 = Date.now();
-  while (Date.now() - t0 < 8000){
-    const a = reg.active;
-    if (a && a.scriptURL.indexOf(want) > -1 && a.state === 'activated') return true;
-    await new Promise(r => setTimeout(r, 150));
-  }
-  throw new Error('The service worker did not start. Check that sw.js sits next to index.html.');
-}
-async function openViaSW(t, url){
-  try { await regSW(); }
-  catch(e){ t.sdOn = false; syncOverlays(t); t.msg.textContent = e.message || String(e); select(t); return; }
-  t.direct = true; t.src = url; t.hideUrl = !!t.isApp;
-  t.frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals allow-downloads');
-  t.frame.removeAttribute('srcdoc');
-  appLoad(t);
-  t.frame.src = new URL('~/' + encodeURIComponent(url), location.href.replace(/[?#].*$/, '').replace(/[^\/]*$/, '')).href;
-  t.sdOn = false; syncOverlays(t);
 }
 function openDirect(t, url){
   t.direct = true; t.src = url; t.hideUrl = !!t.isApp;
   t.frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals allow-downloads');
   t.frame.removeAttribute('srcdoc');
+  t.frame.style.transition = ''; t.frame.style.opacity = '1';
   appLoad(t);
   t.frame.src = url;
   t.sdOn = false; syncOverlays(t);
@@ -1667,14 +1997,14 @@ async function bridge(d, src){
     if (S.blockTrackers && isTracker(d.url)) return reply(d.funnyFrame ? { html:'' } : { status:204, statusText:'blocked', headers:[], buf:new ArrayBuffer(0), url:d.url });
     if (d.funnyFrame){
       const res = await viaWisp(signal => Engine.load(d.url, { signal, log:own.log }));
-      reply({ html:res.html });
+      reply({ html:res.html, ck:Engine.docCookies(d.base || d.url) });
     } else {
       const o = { redirect:'follow' };
       if (d.method && d.method !== 'GET'){ o.method = d.method; if (d.body != null) o.body = d.body; }
       if (d.headers && Object.keys(d.headers).length) o.headers = d.headers;
       const r = await viaWisp(signal => Engine.raw(d.url, { ...o, signal }, own.log));
       const buf = await r.arrayBuffer();
-      reply({ status:r.status, statusText:r.statusText || '', headers:[...r.headers.entries()], buf, url:r.url || d.url }, [buf]);
+      reply({ status:r.status, statusText:r.statusText || '', headers:[...r.headers.entries()], buf, url:r.url || d.url, ck:Engine.docCookies(d.base || d.url) }, [buf]);
     }
   } catch(err){ reply({ err:String(err && err.message || err) }); }
 }
@@ -1684,6 +2014,7 @@ function onMsg(e){
   if (d.lumin) return luminMsg(d);
   if (d.funnyFetch || d.funnyFrame) return bridge(d, e.source);
   const own = ownerOf(e.source);
+  if (d.funnyCookie){ if (S.cookies !== false && ownerOf(e.source) && typeof d.url === 'string' && /^https?:/i.test(d.url) && typeof d.line === 'string') Engine.setCookie(d.url, d.line); return; }
   if (d.funnyKey !== undefined){ if (S.panicKey && d.funnyKey === S.panicKey) panic(); return; }
   if (d.funnyLog){ if (own && own.t) addLog(own.t, d.lv, d.msg); return; }
   if (d.funnyEvalRes || d.funnyDomRes){ const f = devWait[d.id]; if (f){ delete devWait[d.id]; f(d); } return; }
@@ -1717,11 +2048,14 @@ function togglePanel(id){
   });
   if ($('gamesPanel').classList.contains('open')) loadGames();
   if ($('musicPanel').classList.contains('open')) loadPanel('music', 'mframe', MUSIC_URL);
-  if ($('aiPanel').classList.contains('open')) loadPanel('ai', 'aiframe', AI_URL);
+  if ($('aiPanel').classList.contains('open')) loadPanel('ai', 'aiframe', aiUrl());
   if ($('chatPanel').classList.contains('open')) loadPanel('chat', 'chatframe', CHAT_URL);
 }
-const MUSIC_URL = 'https://shore-cloud-28296.surge.sh/pages/music.html';
-const AI_URL = 'https://levitator-lagging-dynamic.ngrok-free.dev/ai.html';
+const MUSIC_URL = 'https://cdn.jsdelivr.net/gh/ppkiwi-ppkiwigames/dependentmouse@main/radiotwin.svg';
+const AI_DEFAULT_URL = 'https://levitator-lagging-dynamic.ngrok-free.dev/ai.html';
+const AI_DUCK_URL = 'https://duck.ai';
+const UGS_URL = 'https://cdn.jsdelivr.net/gh/ppkiwi-ppkiwigames/dependentmouse@main/snails.svg';
+const aiUrl = () => S.aiProvider === 'duck' ? AI_DUCK_URL : AI_DEFAULT_URL;
 const CHAT_URL = 'https://padlet.com/sha8319399/trustmetwin';
 const LD = {};
 LD.music = guardFrame($('mframe'), 'Music'); LD.ai = guardFrame($('aiframe'), 'AI'); LD.chat = guardFrame($('chatframe'), 'Chat'); LD.games = guardFrame($('gframe'), 'Games', false);
@@ -1764,6 +2098,14 @@ async function proxyFrame(key, frameId, url, req){
 function loadPanel(key, frameId, url){
   if (PLOADED[key]) return;
   PLOADED[key] = true;
+  if (key === 'music'){   // music loads directly, not through the Wisp proxy
+    const frame = $(frameId);
+    frame._tok = {};
+    frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-modals allow-downloads');
+    frame.removeAttribute('srcdoc');
+    frame.src = url;
+    return;
+  }
   proxyFrame(key, frameId, url);
 }
 $('chatBtn').onclick = () => togglePanel('chatPanel');
@@ -1773,7 +2115,7 @@ $('appsBtn').onclick = () => togglePanel('appsPanel');
 $('settingsBtn').onclick = () => togglePanel('settingsPanel');
 $('gamesBtn').onclick = () => togglePanel('gamesPanel');
 $('linkBtn').onclick = () => togglePanel('linkPanel');
-$('ai-pop').onclick = () => { $('aiPanel').classList.remove('open'); newTab(AI_URL); };
+$('ai-pop').onclick = () => { $('aiPanel').classList.remove('open'); newTab(aiUrl()); };
 $('chat-pop').onclick = () => { $('chatPanel').classList.remove('open'); newTab(CHAT_URL); };
 	document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.panel').classList.remove('open'));
 
@@ -1815,25 +2157,34 @@ $('chat-pop').onclick = () => { $('chatPanel').classList.remove('open'); newTab(
 	function luminMsg(d){
 	clearTimeout(luminTimer); LD.games.hide();
 	if (d.lumin === 'ok'){ $('gstate').textContent = ''; $('gretry').style.display = 'none'; return; }
-	if (gMode === 0){ gMode = 1; gamesLoaded = false; $('gframe').srcdoc = ''; loadGames(); return; }
 	$('gstate').textContent = 'Lumin couldn’t start: ' + d.msg;
 	$('gretry').style.display = '';
 	gamesLoaded = false;
 	}
 	const LUMIN_URL = 'https://cdn.jsdelivr.net/gh/luminsdk/script@latest/lumin.min.js';
+	async function loadUgs(){
+	const frame = $('gframe'), tok = frame._tok = {};
+	$('gstate').textContent = 'Loading…'; $('gretry').style.display = 'none'; LD.games.show();
+	frame.setAttribute('sandbox', SANDBOX_PANEL);
+	// loaded directly, not through the Wisp proxy
+	frame.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock allow-modals allow-downloads');
+	frame.removeAttribute('srcdoc');
+	frame.onload = () => { frame.onload = null; if (frame._tok === tok){ $('gstate').textContent = ''; LD.games.hide(); } };
+	frame.src = UGS_URL;
+	setTimeout(() => { if (frame._tok === tok){ $('gstate').textContent = ''; LD.games.hide(); } }, 12000);
+	}
 	async function loadGames(){
 	if (gamesLoaded) return;
 	gamesLoaded = true;
+	if (S.gameSite === 'ugs') return loadUgs();
+	$('gframe').setAttribute('sandbox', 'allow-scripts allow-same-origin allow-popups allow-forms allow-pointer-lock allow-modals allow-downloads');
 	$('gstate').textContent = 'Loading…'; $('gretry').style.display = 'none'; LD.games.show();
 	const theme = S.theme === 'light' ? 'light' : 'dark';
-	let lib;
-	try { lib = await viaWisp(async signal => { const r = await Engine.raw(LUMIN_URL, { redirect:'follow', signal }); if (r.status >= 400) throw new Error('HTTP ' + r.status); return await r.text(); }); }
-	catch(err){ lib = null; }
-	const safe = x => String(x).replace(/<\/(script)/gi, '<\\/$1');
+	$('gframe').removeAttribute('src');
 	$('gframe').srcdoc = '<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;min-height:100%;background:transparent;font-family:system-ui}#games{min-height:100vh}</style></head><body>' +
     '<div id="games"></div>' +
-    '<script>(' + bridgeRuntime.toString() + ')({nav:false,log:false,native:' + (gMode === 0) + '})<\/script>' +
-    (lib == null ? '<script src="' + LUMIN_URL + '"><\/script>' : '<script>' + safe(lib) + '<\/script>') +
+    '<script>(' + bridgeRuntime.toString() + ')({nav:false,log:false,native:true})<\/script>' +
+    '<script src="' + LUMIN_URL + '" onerror="parent.postMessage({lumin:\'error\',msg:\'could not load the Lumin script\'},\'*\')"><\/script>' +
     '<script>' +
     'var send=function(m){parent.postMessage(m,"*")};' +
     'addEventListener("error",function(e){send({lumin:"error",msg:String(e.message||"script error")})});' +
@@ -1842,7 +2193,18 @@ $('chat-pop').onclick = () => { $('chatPanel').classList.remove('open'); newTab(
     '<\/script></body></html>';
   luminTimer = setTimeout(() => { $('gstate').textContent = ''; LD.games.hide(); }, 12000);
 }
-$('gretry').onclick = () => { gMode = 0; $('gframe').srcdoc = ''; loadGames(); };
+$('gretry').onclick = () => { gMode = 0; gamesLoaded = false; $('gframe').srcdoc = ''; loadGames(); };
+$('gsite').addEventListener('change', () => {
+  const f = $('gframe'); f._tok = {}; f.onload = null; clearTimeout(luminTimer);
+  gMode = 0; gamesLoaded = false;
+  f.removeAttribute('srcdoc'); f.src = 'about:blank';
+  $('gstate').textContent = ''; $('gretry').style.display = 'none';
+  setTimeout(loadGames, 60);
+});
+$('s-aiProvider').addEventListener('change', () => {
+  PLOADED.ai = false; $('aiframe').srcdoc = '';
+  if ($('aiPanel').classList.contains('open')) loadPanel('ai', 'aiframe', aiUrl());
+});
 
 /* ===== 8. PANIC COVER ===== */
 const cloak = $('cloak');
@@ -2044,6 +2406,7 @@ function bindExtras(){
     await initEngine();
     st.textContent = 'Using the fastest: ' + ok.map(r => r[0].replace(/^wss?:\/\//, '').replace(/\/$/, '') + ' ' + r[1] + ' ms').join(' · ');
   };
+  $('s-clearcookies').onclick = () => { Engine.clearCookies(); $('s-saved').textContent = 'Cookies cleared'; setTimeout(() => $('s-saved').textContent = '', 1500); };
   $('s-clearcache').onclick = () => { CACHE.clear(); $('s-saved').textContent = 'Cache cleared'; setTimeout(() => $('s-saved').textContent = '', 1500); };
   $('s-export').onclick = async () => {
     const txt = JSON.stringify(S);
@@ -2214,17 +2577,103 @@ function bindLinks(){
   ['lk-repo', 'lk-branch', 'lk-path'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') makeLinks(); }));
 }
 
-/* ===== FULL SCREEN ===== */
-function setFs(on){
-  document.body.classList.toggle('fs', on);
-  if (on){ try { const p = document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch(e){} }
-  else if (document.fullscreenElement){ try { document.exitFullscreen(); } catch(e){} }
+/* ===== 8d. LOOK: fonts, cursors, custom backgrounds ===== */
+const FONTS = {
+  system:['System default','system-ui,sans-serif'],
+  arial:['Arial','Arial,Helvetica,sans-serif'],
+  verdana:['Verdana','Verdana,Geneva,sans-serif'],
+  trebuchet:['Trebuchet MS','"Trebuchet MS",sans-serif'],
+  georgia:['Georgia (serif)','Georgia,"Times New Roman",serif'],
+  times:['Times New Roman','"Times New Roman",Times,serif'],
+  mono:['Monospace','ui-monospace,Consolas,"Courier New",monospace'],
+  courier:['Courier New','"Courier New",Courier,monospace'],
+  rounded:['Rounded','ui-rounded,"Hiragino Maru Gothic ProN",Quicksand,system-ui,sans-serif'],
+  comic:['Comic Sans','"Comic Sans MS","Comic Neue",cursive']
+};
+const CURSORS = { default:'Default', dot:'Dot', ring:'Ring', arrow:'Accent arrow', crosshair:'Crosshair', cell:'Plus', custom:'Custom image…' };
+const svgUri = x => 'data:image/svg+xml,' + encodeURIComponent(x);
+function cursorCss(){
+  const c = S.cursor, a = S.accent || '#6c8cff', W = 'xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"';
+  let v = '';
+  if (c === 'dot') v = 'url("' + svgUri('<svg ' + W + '><circle cx="12" cy="12" r="5" fill="' + a + '" stroke="#fff" stroke-width="2"/></svg>') + '") 12 12, auto';
+  else if (c === 'ring') v = 'url("' + svgUri('<svg ' + W + '><circle cx="12" cy="12" r="9" fill="none" stroke="#fff" stroke-width="5"/><circle cx="12" cy="12" r="9" fill="none" stroke="' + a + '" stroke-width="2.5"/></svg>') + '") 12 12, auto';
+  else if (c === 'arrow') v = 'url("' + svgUri('<svg ' + W + '><path d="M3 2 L3 20 L8 15.5 L11.5 22 L14.5 20.5 L11 14.5 L18 14.5 Z" fill="' + a + '" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>') + '") 3 2, auto';
+  else if (c === 'crosshair' || c === 'cell') v = c;
+  else if (c === 'custom'){
+    const src = S.cursorData || S.cursorImg;
+    if (/^(https?:|data:)/i.test(src || '')) v = 'url("' + String(src).replace(/"/g, '%22') + '") 0 0, auto';
+  }
+  return v ? '*{cursor:' + v + ' !important}' : '';
 }
-function bindFs(){
-  $('fsBtn').onclick = () => setFs(!document.body.classList.contains('fs'));
-  $('fsExit').onclick = () => setFs(false);
-  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('fs'); });
-  document.addEventListener('keydown', e => { if (e.key === 'F11'){ e.preventDefault(); setFs(!document.body.classList.contains('fs')); } });
+function fontCss(){
+  let fam = (FONTS[S.font] || FONTS.system)[1], out = '';
+  const old = document.getElementById('gfont'); if (old) old.remove();
+  if (S.font === 'custom'){
+    if (S.fontData){
+      out = '@font-face{font-family:"FunnyCustom";src:url("' + S.fontData + '")}';
+      fam = '"FunnyCustom",system-ui,sans-serif';
+    } else {
+      const n = (S.fontCustom || '').replace(/[^\w \-]/g, '').trim();
+      if (n){
+        const l = document.createElement('link'); l.id = 'gfont'; l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(n).replace(/%20/g, '+') + '&display=swap';
+        document.head.append(l);
+        fam = '"' + n + '",system-ui,sans-serif';
+      }
+    }
+  }
+  return out + ':root{--ui-font:' + fam + '}';
+}
+function applyLook(){
+  let st = document.getElementById('look-style');
+  if (!st){ st = document.createElement('style'); st.id = 'look-style'; document.head.append(st); }
+  st.textContent = fontCss() + '\n' + cursorCss();
+  const stage = $('stage'), m = S.bg, src = S.bgData || S.bgImg;
+  let bg = '';
+  if (m === 'image' && /^(https?:|data:)/i.test(src || '')){
+    const tile = S.bgFit === 'tile';
+    bg = (S.bgColor || '#000') + ' url("' + String(src).replace(/"/g, '%22') + '") center/' + (tile ? 'auto' : S.bgFit) + ' ' + (tile ? 'repeat' : 'no-repeat');
+  } else if (m === 'color') bg = S.bgColor;
+  else if (m === 'gradient') bg = 'linear-gradient(135deg,' + S.bgColor + ',' + S.bgColor2 + ')';
+  stage.style.background = bg;
+  $('s-bgImgBox').style.display = m === 'image' ? '' : 'none';
+  $('s-bgColorRow').style.display = (m === 'image' || m === 'color' || m === 'gradient') ? '' : 'none';
+  $('s-bgColor2').style.display = m === 'gradient' ? '' : 'none';
+  $('s-fontBox').style.display = S.font === 'custom' ? '' : 'none';
+  $('s-cursorBox').style.display = S.cursor === 'custom' ? '' : 'none';
+}
+function readFile(f, max, ok, st, label){
+  if (!f) return;
+  if (f.size > max){ st.textContent = 'That file is over ' + Math.round(max / 1e6) + ' MB. Pick a smaller one.'; return; }
+  const fr = new FileReader();
+  fr.onload = () => { ok(fr.result); st.textContent = 'Using ' + f.name; };
+  fr.readAsDataURL(f);
+}
+function bindLook(){
+  const fs = $('s-font'); fs.innerHTML = '';
+  Object.keys(FONTS).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = FONTS[k][0]; fs.append(o); });
+  const oc = document.createElement('option'); oc.value = 'custom'; oc.textContent = 'Custom…'; fs.append(oc);
+  fs.value = S.font;
+  const cs = $('s-cursor'); cs.innerHTML = '';
+  Object.keys(CURSORS).forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = CURSORS[k]; cs.append(o); });
+  cs.value = S.cursor;
+  $('s-fontFile').onchange = e => readFile(e.target.files[0], 2e6, d => { S.fontData = d; S.font = 'custom'; saveSettings(); syncUI(); applySettings(); }, $('s-fontState'));
+  $('s-bgFile').onchange = e => readFile(e.target.files[0], 2e6, d => { S.bgData = d; S.bg = 'image'; saveSettings(); syncUI(); applySettings(); }, $('s-bgState'));
+  $('s-cursorFile').onchange = e => readFile(e.target.files[0], 2e6, d => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = 32;
+      const r = Math.min(32 / im.width, 32 / im.height), w = im.width * r, h = im.height * r;
+      c.getContext('2d').drawImage(im, (32 - w) / 2, (32 - h) / 2, w, h);
+      S.cursorData = c.toDataURL('image/png'); S.cursor = 'custom'; saveSettings(); syncUI(); applySettings();
+    };
+    im.src = d;
+  }, $('s-cursorState'));
+  // typing an address replaces an uploaded file
+  $('s-bgImg').addEventListener('input', () => { if ($('s-bgImg').value.trim()){ S.bgData = ''; } });
+  $('s-cursorImg').addEventListener('input', () => { if ($('s-cursorImg').value.trim()){ S.cursorData = ''; } });
+  $('s-fontCustom').addEventListener('input', () => { if ($('s-fontCustom').value.trim()){ S.fontData = ''; } });
+  ['s-bgColor', 's-bgColor2'].forEach(id => $(id).addEventListener('input', () => { S[SIMPLE[id]] = $(id).value; applyLook(); }));
 }
 
 /* ===== 9. BOOT ===== */
@@ -2240,7 +2689,8 @@ bindSettings();
 bindExtras();
 bindDev();
 bindLinks();
-bindFs();
+bindLook();
+applyLook();
 initEngine();
 newTab();
 </script>
